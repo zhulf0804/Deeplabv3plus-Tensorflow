@@ -1,0 +1,1 @@
+down load pretrained model from [here](http://download.tensorflow.org/models/resnet_v2_101_2017_04_14.tar.gz).
