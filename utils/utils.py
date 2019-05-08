@@ -22,17 +22,27 @@ def cal_batch_mIoU(pred, gt, classes_num):
     IoU_0 = []
     IoU = []
     eps = 1e-6
-    for i in range(classes_num):
-        a = np.sum(pred == i)
-        b = np.sum(gt == i)
-        c = [pred == i, gt == i]
+
+    pred_flatten = np.reshape(pred, -1)
+    gt_flatten = np.reshape(gt, -1)
+
+    indices_ignore_label = np.where(pred_flatten < classes_num)
+
+    pred_flatten_ignore = pred_flatten[indices_ignore_label]
+    gt_flatten_ignore = gt_flatten[indices_ignore_label]
+
+
+    for i in range(1, classes_num):
+        a = np.sum(pred_flatten_ignore == i)
+        b = np.sum(gt_flatten_ignore == i)
+        c = [pred_flatten_ignore == i, gt_flatten_ignore == i]
         c = np.sum(np.all(c, 0))
         iou = c / (a + b - c + eps)
         if b != 0:
             IoU.append(iou)
         IoU_0.append(round(iou, 2))
 
-    IoU_0 = dict(zip(CLASS_NAMES, IoU_0))
+    IoU_0 = dict(zip(CLASS_NAMES[1:], IoU_0))
     mIoU = np.mean(IoU)
     return mIoU, IoU_0
 

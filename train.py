@@ -24,52 +24,39 @@ PRETRAINED_MODEL_PATH = deeplab_model.PRETRAINED_MODEL_PATH
 
 SAMPLES = 10582
 EPOCHES = 30
-MAX_STEPS = (SAMPLES) // 4 * EPOCHES
+MAX_STEPS = (SAMPLES) // BATCH_SIZE * EPOCHES
 
 
 initial_lr = 7e-3
-_WEIGHT_DECAY = 1e-4
+end_lr = 1e-6
+_POWER = 0.9
+_WEIGHT_DECAY = 5e-4
 
 saved_ckpt_path = './checkpoint/'
 saved_summary_train_path = './summary/train/'
 saved_summary_test_path = './summary/test/'
 
-def weighted_loss(logits, labels, num_classes, head=None, ignore=19):
-    """re-weighting"""
-    with tf.name_scope('loss'):
-        logits = tf.reshape(logits, (-1, num_classes))
 
-        epsilon = tf.constant(value=1e-10)
+def cal_loss(logits, y):
+    raw_prediction = tf.reshape(logits, [-1, CLASSES])
+    raw_gt = tf.reshape(y, [-1])
 
-        logits = logits + epsilon
+    indices = tf.squeeze(tf.where(tf.less_equal(raw_gt, CLASSES - 1)), 1)
+    gt = tf.cast(tf.gather(raw_gt, indices), tf.int32)
+    prediction = tf.gather(raw_prediction, indices)
 
-        label_flat = tf.reshape(labels, (-1, 1))
-        labels = tf.reshape(tf.one_hot(label_flat, depth=num_classes), (-1, num_classes))
+    # Pixel-wise softmax loss.
+    loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)
 
-        softmax = tf.nn.softmax(logits)
-
-        cross_entropy = -tf.reduce_sum(tf.multiply(labels * tf.log(softmax + epsilon), head), axis=[1])
-
-        cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
-
-    return cross_entropy_mean
-
-def cal_loss(logits, labels):
-
-    loss_weight = [1.0 for i in range(CLASSES)]
-    loss_weight = np.array(loss_weight)
-
-    labels = tf.cast(labels, tf.int32)
-
-    # return loss(logits, labels)
-    return weighted_loss(logits, labels, num_classes=CLASSES, head=loss_weight)
+    return tf.reduce_mean(loss)
 
 with tf.name_scope('input'):
     x = tf.placeholder(dtype=tf.float32, shape=[BATCH_SIZE, CROP_HEIGHT, CROP_WIDTH, CHANNELS], name='x_input')
     y = tf.placeholder(dtype=tf.int32, shape=[BATCH_SIZE, CROP_HEIGHT, CROP_WIDTH], name='ground_truth')
 
 
-logits = deeplab_model.deeplab_v3_plus(x, is_training=True, output_stride=16, pre_trained_model=PRETRAINED_MODEL_PATH)
+#logits = deeplab_model.deeplab_v3_plus(x, is_training=True, output_stride=16, pre_trained_model=PRETRAINED_MODEL_PATH)
+logits = deeplab_model.deeplabv3_plus_model_fn(x)
 
 with tf.name_scope('regularization'):
 
@@ -81,18 +68,14 @@ with tf.name_scope('regularization'):
             [tf.nn.l2_loss(v) for v in train_var_list])
 
 with tf.name_scope('loss'):
-    #reshaped_logits = tf.reshape(logits, [BATCH_SIZE, -1])
-    #reshape_y = tf.reshape(y, [BATCH_SIZE, -1])
-    #loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=reshape_y, logits=reshaped_logits), name='loss')
-    #loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y, logits=logits), name='loss')
+
     loss = cal_loss(logits, y)
     tf.summary.scalar('loss', loss)
     loss_all = loss + l2_loss
-    #loss_all = loss
     tf.summary.scalar('loss_all', loss_all)
 
 with tf.name_scope('learning_rate'):
-    lr = tf.Variable(initial_lr, dtype=tf.float32)
+    lr = tf.Variable(initial_lr, dtype=tf.float32, trainable=False)
     tf.summary.scalar('learning_rate', lr)
 
 optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9).minimize(loss_all)
@@ -150,7 +133,7 @@ with tf.Session() as sess:
 
         if i % 10 == 0:
             print(
-                "train step: %d, train loss all: %f, train loss: %f, test loss all: %f, test loss: %f," % (
+                "train step: %d, | train loss all: %f, | train loss: %f, | test loss all: %f, | test loss: %f," % (
                     i, train_loss_val_all, train_loss_val, test_loss_val_all, test_loss_val))
 
         if i % 200 == 0:
@@ -172,19 +155,20 @@ with tf.Session() as sess:
             if not os.path.exists('images'):
                 os.mkdir('images')
             for j in range(BATCH_SIZE):
-                cv2.imwrite('images/train_img_%d_%s' %(j, filename[j]), image_batch[j])
-                cv2.imwrite('images/train_anno_%d_%s' %(j, filename[j]), Utils.color_gray(anno_batch[j]))
-                cv2.imwrite('images/train_pred_%d_%s' %(j, filename[j]), Utils.color_gray(pred_train[j]))
-                cv2.imwrite('images/test_img_%d_%s' %(j, filename[j]), image_batch_test[j])
-                cv2.imwrite('images/test_anno_%d_%s' %(j, filename[j]), Utils.color_gray(anno_batch_test[j]))
-                cv2.imwrite('images/test_pred_%d_%s' %(j, filename[j]), Utils.color_gray(pred_test[j]))
+                cv2.imwrite('images/%d_%s_train_img.png' %(i, filename[j].split('.')[0]), image_batch[j])
+                cv2.imwrite('images/%d_%s_train_anno.png' %(i, filename[j].split('.')[0]), Utils.color_gray(anno_batch[j]))
+                cv2.imwrite('images/%d_%s_train_pred.png' %(i, filename[j].split('.')[0]), Utils.color_gray(pred_train[j]))
+                cv2.imwrite('images/%d_%s_test_img.png' %(i, filename_test[j].split('.')[0]), image_batch_test[j])
+                cv2.imwrite('images/%d_%s_test_anno.png' %(i, filename_test[j].split('.')[0]), Utils.color_gray(anno_batch_test[j]))
+                cv2.imwrite('images/%d_%s_test_pred.png' %(i, filename_test[j].split('.')[0]), Utils.color_gray(pred_test[j]))
 
 
         if i % 5000 == 0:
             saver.save(sess, os.path.join(saved_ckpt_path, 'deeplabv3plus.model'), global_step=i)
 
 
-        if i == 10000 or i == 40000 or i == 100000:
-            sess.run(tf.assign(lr, 0.1 * lr))
+        #if i == 10000 or i == 40000 or i == 100000:
+        if learning_rate > end_lr:
+            sess.run(tf.assign(lr, initial_lr * pow((1 - (1.0 * i / MAX_STEPS)), _POWER)))
 
 

@@ -11,25 +11,25 @@ import deeplab_model
 import input_data
 import utils.utils as Utils
 
+
+PRETRAINED_MODEL_PATH = deeplab_model.PRETRAINED_MODEL_PATH
+
+
 BATCH_SIZE = 1
 CLASSES = deeplab_model.CLASSES
 saved_ckpt_path = './checkpoint/'
 saved_prediction = './pred/'
 prediction_on = 'val' # 'train', 'val' or 'test'
 
-HEIGHT = input_data.HEIGHT
-WIDTH = input_data.WIDTH
-
-
 
 test_data = input_data.read_test_data()
 
 with tf.name_scope("input"):
 
-    x = tf.placeholder(tf.float32, [BATCH_SIZE, HEIGHT, WIDTH, 3], name='x_input')
-    y = tf.placeholder(tf.int32, [BATCH_SIZE, HEIGHT, WIDTH], name='ground_truth')
+    x = tf.placeholder(tf.float32, [BATCH_SIZE, None, None, 3], name='x_input')
+    y = tf.placeholder(tf.int32, [BATCH_SIZE, None, None], name='ground_truth')
 
-logits = deeplab_model.deeplab_v3_plus(x, is_training=False, output_stride=16, pre_trained_model=None)
+logits = deeplab_model.deeplab_v3_plus(x, is_training=True, output_stride=16, pre_trained_model=PRETRAINED_MODEL_PATH)
 
 
 with tf.name_scope('prediction_and_miou'):
