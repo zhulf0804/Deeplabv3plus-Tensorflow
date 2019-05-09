@@ -8,22 +8,24 @@ import tensorflow as tf
 import numpy as np
 import os
 import cv2
+import datetime
 slim = tf.contrib.slim
 import deeplab_model
 import input_data
 import utils.utils as Utils
 
 
-BATCH_SIZE = 4
+BATCH_SIZE = 6
 CROP_HEIGHT = input_data.HEIGHT
 CROP_WIDTH = input_data.WIDTH
 CLASSES = deeplab_model.CLASSES
 CHANNELS = 3
+_IGNORE_LABEL = input_data._IGNORE_LABEL
 
 PRETRAINED_MODEL_PATH = deeplab_model.PRETRAINED_MODEL_PATH
 
 SAMPLES = 10582
-EPOCHES = 30
+EPOCHES = 20
 MAX_STEPS = (SAMPLES) // BATCH_SIZE * EPOCHES
 
 
@@ -37,7 +39,8 @@ saved_summary_train_path = './summary/train/'
 saved_summary_test_path = './summary/test/'
 
 
-def cal_loss(logits, y):
+def cal_loss(logits, y, loss_weight=1.0):
+    '''
     raw_prediction = tf.reshape(logits, [-1, CLASSES])
     raw_gt = tf.reshape(y, [-1])
 
@@ -47,6 +50,15 @@ def cal_loss(logits, y):
 
     # Pixel-wise softmax loss.
     loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)
+    '''
+
+    y = tf.reshape(y, shape=[-1])
+    not_ignore_mask = tf.to_float(tf.not_equal(y,
+                                               _IGNORE_LABEL)) * loss_weight
+    one_hot_labels = tf.one_hot(
+        y, CLASSES, on_value=1.0, off_value=0.0)
+    logits = tf.reshape(logits, shape=[-1, CLASSES])
+    loss = tf.losses.softmax_cross_entropy(onehot_labels=one_hot_labels, logits=logits, weights=not_ignore_mask)
 
     return tf.reduce_mean(loss)
 
@@ -77,6 +89,7 @@ with tf.name_scope('loss'):
 with tf.name_scope('learning_rate'):
     lr = tf.Variable(initial_lr, dtype=tf.float32, trainable=False)
     tf.summary.scalar('learning_rate', lr)
+
 
 optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9).minimize(loss_all)
 
@@ -119,24 +132,29 @@ with tf.Session() as sess:
         image_batch_0, image_batch, anno_batch, filename = train_data.next_batch(BATCH_SIZE, 'train')
         image_batch_test_0, image_batch_test, anno_batch_test, filename_test = test_data.next_batch(BATCH_SIZE)
 
+
         _ = sess.run(optimizer, feed_dict={x: image_batch, y: anno_batch})
 
-        train_summary = sess.run(merged, feed_dict={x: image_batch, y: anno_batch})
-        train_summary_writer.add_summary(train_summary, i)
-        test_summary = sess.run(merged, feed_dict={x: image_batch_test, y: anno_batch_test})
-        test_summary_writer.add_summary(test_summary, i)
 
-        pred_train, train_loss_val_all, train_loss_val = sess.run([predictions, loss_all, loss], feed_dict={x: image_batch, y: anno_batch})
-        pred_test, test_loss_val_all, test_loss_val = sess.run([predictions, loss_all, loss], feed_dict={x: image_batch_test, y: anno_batch_test})
+        if i % 1000 == 0:
+            train_summary = sess.run(merged, feed_dict={x: image_batch, y: anno_batch})
+            train_summary_writer.add_summary(train_summary, i)
+            test_summary = sess.run(merged, feed_dict={x: image_batch_test, y: anno_batch_test})
+            test_summary_writer.add_summary(test_summary, i)
 
-        learning_rate = sess.run(lr)
 
-        if i % 10 == 0:
+        if i % 400 == 0:
+            train_loss_val_all = sess.run(loss_all, feed_dict={x: image_batch, y: anno_batch})
             print(
-                "train step: %d, | train loss all: %f, | train loss: %f, | test loss all: %f, | test loss: %f," % (
-                    i, train_loss_val_all, train_loss_val, test_loss_val_all, test_loss_val))
+                "step: %d, | train loss all: %f" % (i, train_loss_val_all))
 
-        if i % 200 == 0:
+        if i % 1000 == 0:
+            learning_rate = sess.run(lr)
+
+            pred_train, train_loss_val_all, train_loss_val = sess.run([predictions, loss_all, loss],
+                                                                      feed_dict={x: image_batch, y: anno_batch})
+            pred_test, test_loss_val_all, test_loss_val = sess.run([predictions, loss_all, loss],
+                                                                   feed_dict={x: image_batch_test, y: anno_batch_test})
 
             train_mIoU_val, train_IoU_val = Utils.cal_batch_mIoU(pred_train, anno_batch, CLASSES)
             test_mIoU_val, test_IoU_val = Utils.cal_batch_mIoU(pred_test, anno_batch_test, CLASSES)
@@ -151,7 +169,7 @@ with tf.Session() as sess:
             print(test_IoU_val)
             #prediction = tf.argmax(logits, axis=-1, name='predictions')
 
-        if i % 1000 == 0:
+        if i % 5000 == 0:
             if not os.path.exists('images'):
                 os.mkdir('images')
             for j in range(BATCH_SIZE):
@@ -168,7 +186,6 @@ with tf.Session() as sess:
 
 
         #if i == 10000 or i == 40000 or i == 100000:
-        if learning_rate > end_lr:
+
+        if i % 1000 == 0 and learning_rate > end_lr:
             sess.run(tf.assign(lr, initial_lr * pow((1 - (1.0 * i / MAX_STEPS)), _POWER)))
-
-

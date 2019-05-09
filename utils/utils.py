@@ -26,16 +26,12 @@ def cal_batch_mIoU(pred, gt, classes_num):
     pred_flatten = np.reshape(pred, -1)
     gt_flatten = np.reshape(gt, -1)
 
-    indices_ignore_label = np.where(pred_flatten < classes_num)
-
-    pred_flatten_ignore = pred_flatten[indices_ignore_label]
-    gt_flatten_ignore = gt_flatten[indices_ignore_label]
-
 
     for i in range(1, classes_num):
-        a = np.sum(pred_flatten_ignore == i)
-        b = np.sum(gt_flatten_ignore == i)
-        c = [pred_flatten_ignore == i, gt_flatten_ignore == i]
+        a = [pred_flatten == i, gt_flatten != input_data._IGNORE_LABEL]
+        a = np.sum(np.all(a, 0))
+        b = np.sum(gt_flatten == i)
+        c = [pred_flatten == i, gt_flatten == i]
         c = np.sum(np.all(c, 0))
         iou = c / (a + b - c + eps)
         if b != 0:
