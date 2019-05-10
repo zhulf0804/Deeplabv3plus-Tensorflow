@@ -30,7 +30,8 @@ MAX_STEPS = (SAMPLES) // BATCH_SIZE * EPOCHES
 
 
 initial_lr = 7e-3
-end_lr = 1e-6
+end_lr = 1e-5
+decay_steps = 30000
 _POWER = 0.9
 _WEIGHT_DECAY = 5e-4
 
@@ -87,11 +88,22 @@ with tf.name_scope('loss'):
     tf.summary.scalar('loss_all', loss_all)
 
 with tf.name_scope('learning_rate'):
-    lr = tf.Variable(initial_lr, dtype=tf.float32, trainable=False)
+    global_step = tf.Variable(0, trainable=False)
+    lr = tf.train.polynomial_decay(
+        learning_rate=initial_lr,
+        global_step=global_step,
+        decay_steps=decay_steps,
+        end_learning_rate=end_lr,
+        power=_POWER,
+        cycle=False,
+        name=None
+    )
     tf.summary.scalar('learning_rate', lr)
 
-
-optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9).minimize(loss_all)
+with tf.name_scope("opt"):
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9).minimize(loss_all, var_list=train_var_list, global_step=global_step)
 
 with tf.name_scope("mIoU"):
     softmax = tf.nn.softmax(logits, axis=-1)
@@ -143,14 +155,12 @@ with tf.Session() as sess:
             test_summary_writer.add_summary(test_summary, i)
 
 
-        if i % 400 == 0:
+        if i % 200 == 0:
             train_loss_val_all = sess.run(loss_all, feed_dict={x: image_batch, y: anno_batch})
-            print(
-                "step: %d, | train loss all: %f" % (i, train_loss_val_all))
+            print(datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S"), " | Step: %d, | Train loss all: %f" % (i, train_loss_val_all))
 
         if i % 1000 == 0:
             learning_rate = sess.run(lr)
-
             pred_train, train_loss_val_all, train_loss_val = sess.run([predictions, loss_all, loss],
                                                                       feed_dict={x: image_batch, y: anno_batch})
             pred_test, test_loss_val_all, test_loss_val = sess.run([predictions, loss_all, loss],
@@ -161,12 +171,13 @@ with tf.Session() as sess:
 
             sess.run(tf.assign(train_mIoU, train_mIoU_val))
             sess.run(tf.assign(test_mIoU, test_mIoU_val))
-
-            print(
-                "train step: %d, learning rate: %f, train loss all: %f, train loss: %f, train mIoU: %f, test loss all: %f, test loss: %f, test mIoU: %f" % (
+            print('------------------------------')
+            print(datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S"), " | Step: %d, | Lr: %f, | train loss all: %f, | train loss: %f, | train mIoU: %f, | test loss all: %f, | test loss: %f, | test mIoU: %f" % (
                 i, learning_rate, train_loss_val_all, train_loss_val, train_mIoU_val, test_loss_val_all, test_loss_val, test_mIoU_val))
+            print('------------------------------')
             print(train_IoU_val)
             print(test_IoU_val)
+            print('------------------------------')
             #prediction = tf.argmax(logits, axis=-1, name='predictions')
 
         if i % 5000 == 0:
@@ -183,9 +194,3 @@ with tf.Session() as sess:
 
         if i % 5000 == 0:
             saver.save(sess, os.path.join(saved_ckpt_path, 'deeplabv3plus.model'), global_step=i)
-
-
-        #if i == 10000 or i == 40000 or i == 100000:
-
-        if i % 1000 == 0 and learning_rate > end_lr:
-            sess.run(tf.assign(lr, initial_lr * pow((1 - (1.0 * i / MAX_STEPS)), _POWER)))

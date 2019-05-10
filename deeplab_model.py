@@ -155,7 +155,7 @@ def deeplab_v3_plus_generator(num_classes,
   return model
 
 
-def deeplabv3_plus_model_fn(features):
+def deeplabv3_plus_model_fn(features, is_training=True):
   """Model function for PASCAL VOC."""
 
 
@@ -165,7 +165,7 @@ def deeplabv3_plus_model_fn(features):
                                       './resnet_v2_101_2017_04_14/resnet_v2_101.ckpt',
                                       _BATCH_NORM_DECAY)
 
-  logits = network(features, True)
+  logits = network(features, is_training)
 
   return logits
 
@@ -176,5 +176,19 @@ if __name__ == '__main__':
 
     #inputs = tf.constant(1.0, shape=[8, None, None, 3])
     b = deeplabv3_plus_model_fn(inputs)
+
+    print(len(tf.global_variables()), tf.global_variables())
+    print(len(tf.trainable_variables()), tf.trainable_variables())
+
+    beta_trainable = [v for v in tf.trainable_variables() if 'beta' in v.name]
+    gama_trainable = [v for v in tf.trainable_variables() if 'gamma' in v.name]
+    w_trainable = [v for v in tf.trainable_variables() if 'weight' in v.name]
+    b_trainable = [v for v in tf.trainable_variables() if 'bias' in v.name]
+
+    print(len(beta_trainable), len(gama_trainable), len(w_trainable), len(b_trainable))
+
+    for v in tf.trainable_variables():
+      if v not in beta_trainable and v not in gama_trainable and v not in w_trainable and v not in b_trainable:
+        print(v)
 
     print(b)
