@@ -18,6 +18,7 @@ import utils.utils as Utils
 BATCH_SIZE = 6
 CROP_HEIGHT = input_data.HEIGHT
 CROP_WIDTH = input_data.WIDTH
+
 CLASSES = deeplab_model.CLASSES
 CHANNELS = 3
 _IGNORE_LABEL = input_data._IGNORE_LABEL
@@ -25,7 +26,7 @@ _IGNORE_LABEL = input_data._IGNORE_LABEL
 PRETRAINED_MODEL_PATH = deeplab_model.PRETRAINED_MODEL_PATH
 
 SAMPLES = 10582
-EPOCHES = 20
+EPOCHES =50
 MAX_STEPS = (SAMPLES) // BATCH_SIZE * EPOCHES
 
 
@@ -117,7 +118,7 @@ with tf.name_scope("mIoU"):
 merged = tf.summary.merge_all()
 
 train_data = input_data.read_train_data()
-test_data = input_data.read_test_data()
+val_data = input_data.read_val_data()
 
 with tf.Session() as sess:
 
@@ -141,8 +142,8 @@ with tf.Session() as sess:
     for i in range(0, MAX_STEPS + 1):
 
 
-        image_batch_0, image_batch, anno_batch, filename = train_data.next_batch(BATCH_SIZE, 'train')
-        image_batch_test_0, image_batch_test, anno_batch_test, filename_test = test_data.next_batch(BATCH_SIZE)
+        image_batch_0, image_batch, anno_batch, filename = train_data.next_batch(BATCH_SIZE, is_training=True)
+        image_batch_val_0, image_batch_val, anno_batch_val, filename_val = val_data.next_batch(BATCH_SIZE, is_training=True)
 
 
         _ = sess.run(optimizer, feed_dict={x: image_batch, y: anno_batch})
@@ -151,7 +152,7 @@ with tf.Session() as sess:
         if i % 1000 == 0:
             train_summary = sess.run(merged, feed_dict={x: image_batch, y: anno_batch})
             train_summary_writer.add_summary(train_summary, i)
-            test_summary = sess.run(merged, feed_dict={x: image_batch_test, y: anno_batch_test})
+            test_summary = sess.run(merged, feed_dict={x: image_batch_val, y: anno_batch_val})
             test_summary_writer.add_summary(test_summary, i)
 
 
@@ -164,10 +165,10 @@ with tf.Session() as sess:
             pred_train, train_loss_val_all, train_loss_val = sess.run([predictions, loss_all, loss],
                                                                       feed_dict={x: image_batch, y: anno_batch})
             pred_test, test_loss_val_all, test_loss_val = sess.run([predictions, loss_all, loss],
-                                                                   feed_dict={x: image_batch_test, y: anno_batch_test})
+                                                                   feed_dict={x: image_batch_val, y: anno_batch_val})
 
             train_mIoU_val, train_IoU_val = Utils.cal_batch_mIoU(pred_train, anno_batch, CLASSES)
-            test_mIoU_val, test_IoU_val = Utils.cal_batch_mIoU(pred_test, anno_batch_test, CLASSES)
+            test_mIoU_val, test_IoU_val = Utils.cal_batch_mIoU(pred_test, anno_batch_val, CLASSES)
 
             sess.run(tf.assign(train_mIoU, train_mIoU_val))
             sess.run(tf.assign(test_mIoU, test_mIoU_val))
@@ -187,9 +188,9 @@ with tf.Session() as sess:
                 cv2.imwrite('images/%d_%s_train_img.png' %(i, filename[j].split('.')[0]), image_batch[j])
                 cv2.imwrite('images/%d_%s_train_anno.png' %(i, filename[j].split('.')[0]), Utils.color_gray(anno_batch[j]))
                 cv2.imwrite('images/%d_%s_train_pred.png' %(i, filename[j].split('.')[0]), Utils.color_gray(pred_train[j]))
-                cv2.imwrite('images/%d_%s_test_img.png' %(i, filename_test[j].split('.')[0]), image_batch_test[j])
-                cv2.imwrite('images/%d_%s_test_anno.png' %(i, filename_test[j].split('.')[0]), Utils.color_gray(anno_batch_test[j]))
-                cv2.imwrite('images/%d_%s_test_pred.png' %(i, filename_test[j].split('.')[0]), Utils.color_gray(pred_test[j]))
+                cv2.imwrite('images/%d_%s_test_img.png' %(i, filename_val[j].split('.')[0]), image_batch_val[j])
+                cv2.imwrite('images/%d_%s_test_anno.png' %(i, filename_val[j].split('.')[0]), Utils.color_gray(anno_batch_val[j]))
+                cv2.imwrite('images/%d_%s_test_pred.png' %(i, filename_val[j].split('.')[0]), Utils.color_gray(pred_test[j]))
 
 
         if i % 5000 == 0:

@@ -1,8 +1,8 @@
 # coding=utf-8
 from __future__ import print_function
 from __future__ import division
+from __future__ import absolute_import
 
-import cPickle
 import os
 import numpy as np
 from sklearn.utils import shuffle
@@ -38,7 +38,7 @@ label_colours = [(0, 0, 0),  # 0=background
 
 
 
-dataset = './VOCdevkit'
+dataset = '/Volumes/Samsung_T5/datasets/VOC2012'
 tfrecord_file = os.path.join(dataset, 'tfrecord')
 TRAIN_LIST = os.path.join(dataset, 'train.txt')
 VAL_LIST = os.path.join(dataset, 'val.txt')
@@ -94,19 +94,15 @@ def mean_substraction(image):
     return substraction_mean_image
 
 
-def augment(img, anno, type):
+def augment(img, anno):
 
-    if type == 'train':
-        scale_img, scale_anno = random_resize(img, anno)
-    else:
-        scale_img, scale_anno = img, anno
+
+    scale_img, scale_anno = random_resize(img, anno)
 
     cropped_image, cropped_anno = random_pad_crop(scale_img, scale_anno)
 
-    if type == 'train':
-        flipped_img, flipped_anno = flip_random_left_right(cropped_image, cropped_anno)
-    else:
-        flipped_img, flipped_anno = cropped_image, cropped_anno
+
+    flipped_img, flipped_anno = flip_random_left_right(cropped_image, cropped_anno)
 
     substracted_img = mean_substraction(flipped_img)
 
@@ -123,10 +119,7 @@ class Dataset(object):
         self._index_in_epoch = 0
         self._flag = 0
 
-    def next_batch(self, batch_size, type='test', inference=False):
-
-        #if type == 'test':
-        #    batch_size = 1
+    def next_batch(self, batch_size, is_training=False, Shuffle=True):
 
         start = self._index_in_epoch
         self._index_in_epoch += batch_size
@@ -136,7 +129,8 @@ class Dataset(object):
             self._index_in_epoch = batch_size
             assert batch_size <= self._num_examples
 
-            self._image_data, self._labels = shuffle(self._image_data, self._labels)
+            if Shuffle:
+                self._image_data, self._labels = shuffle(self._image_data, self._labels)
 
         end = self._index_in_epoch
 
@@ -148,9 +142,8 @@ class Dataset(object):
             img = cv2.imread(self._image_data[i])
             anno = cv2.imread(self._labels[i], cv2.IMREAD_GRAYSCALE)
 
-            if not inference:
-                aug_img, aug_anno = augment(img, anno, type)
-
+            if is_training:
+                aug_img, aug_anno = augment(img, anno)
 
                 height, width, _ = img.shape
                 batch_img_raw[i-start, 0:np.minimum(height, HEIGHT), 0:np.minimum(width, WIDTH), :] = img[0:np.minimum(height, HEIGHT), 0:np.minimum(width, WIDTH), :]
@@ -158,7 +151,7 @@ class Dataset(object):
                 batch_anno[i-start, ...] = aug_anno
                 filenames.append(os.path.basename(self._image_data[i]))
 
-        if not inference:
+        if is_training:
             return batch_img_raw, batch_img, batch_anno, filenames
         else:
             inference_image = mean_substraction(img)
@@ -166,26 +159,43 @@ class Dataset(object):
             return np.expand_dims(img, 0), np.expand_dims(inference_image, 0), np.expand_dims(anno, 0), os.path.basename(self._image_data[start])
 
 
-def read_train_data():
+def read_train_data(Shuffle=True):
 
     f = open(TRAIN_LIST)
     lines = f.readlines()
     img_filenames = [os.path.join(IMAGE_PATH, line.strip() + '.jpg') for line in lines]
     anno_filenames = [os.path.join(ANNOTATION_PATH, line.strip() + '.png') for line in lines]
 
-    img_filenames, anno_filenames = shuffle(img_filenames, anno_filenames)
+    if Shuffle:
+        img_filenames, anno_filenames = shuffle(img_filenames, anno_filenames)
+
     train_data = Dataset(img_filenames, anno_filenames)
 
     return train_data
 
 
-def read_test_data():
+def read_val_data(Shuffle=True):
     f = open(VAL_LIST)
     lines = f.readlines()
     img_filenames = [os.path.join(IMAGE_PATH, line.strip() + '.jpg') for line in lines]
     anno_filenames = [os.path.join(ANNOTATION_PATH, line.strip() + '.png') for line in lines]
 
-    img_filenames, anno_filenames = shuffle(img_filenames, anno_filenames)
+    if Shuffle:
+        img_filenames, anno_filenames = shuffle(img_filenames, anno_filenames)
+
+    val_data = Dataset(img_filenames, anno_filenames)
+
+    return val_data
+
+def read_test_data(Shuffle=True):
+    f = open(TEST_LIST)
+    lines = f.readlines()
+    img_filenames = [os.path.join(IMAGE_PATH, line.strip() + '.jpg') for line in lines]
+    anno_filenames = [os.path.join(ANNOTATION_PATH, line.strip() + '.png') for line in lines]
+
+    if Shuffle:
+        img_filenames, anno_filenames = shuffle(img_filenames, anno_filenames)
+
     test_data = Dataset(img_filenames, anno_filenames)
 
     return test_data
@@ -193,9 +203,9 @@ def read_test_data():
 
 if __name__ == '__main__':
     train_data = read_train_data()
-    test_data = read_test_data()
-    train_img_raw, train_img_data, train_lables, train_filenames = train_data.next_batch(4, 'train')
-    test_img_raw, test_img_data, test_labels, test_filenames = test_data.next_batch(1, inference=True)
+    test_data = read_val_data()
+    train_img_raw, train_img_data, train_lables, train_filenames = train_data.next_batch(4, True)
+    test_img_raw, test_img_data, test_labels, test_filenames = test_data.next_batch(1)
 
     #print(train_img_data)
     #print(test_img_data)
@@ -205,6 +215,8 @@ if __name__ == '__main__':
         cv2.imwrite('test/train_%d.png'%i, train_img_data[i])
         cv2.imwrite('test/train_labels_%d.png'%i, train_lables[i])
         print(train_filenames[i])
+
+    print("===============")
 
     for i in range(1):
         cv2.imwrite('test/testraw_%d.png' % i, test_img_raw[i])

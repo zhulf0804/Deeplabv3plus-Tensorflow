@@ -26,8 +26,9 @@ def cal_batch_mIoU(pred, gt, classes_num):
     pred_flatten = np.reshape(pred, -1)
     gt_flatten = np.reshape(gt, -1)
 
+    print(pred_flatten.shape, gt_flatten.shape)
 
-    for i in range(1, classes_num):
+    for i in range(0, classes_num):
         a = [pred_flatten == i, gt_flatten != input_data._IGNORE_LABEL]
         a = np.sum(np.all(a, 0))
         b = np.sum(gt_flatten == i)
@@ -38,7 +39,7 @@ def cal_batch_mIoU(pred, gt, classes_num):
             IoU.append(iou)
         IoU_0.append(round(iou, 2))
 
-    IoU_0 = dict(zip(CLASS_NAMES[1:], IoU_0))
+    IoU_0 = dict(zip(CLASS_NAMES[0:], IoU_0))
     mIoU = np.mean(IoU)
     return mIoU, IoU_0
 
