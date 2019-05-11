@@ -22,4 +22,4 @@ A Tensorflow implementation of [Deeplabv3plus](http://openaccess.thecvf.com/cont
 + for val data, generate prediction results and get mIoU.
 + for test data,  generate prediction results.
 
-> python evaluate.py
+    > python evaluate.py
