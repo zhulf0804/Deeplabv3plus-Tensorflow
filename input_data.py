@@ -21,9 +21,10 @@ _MIN_SCALE = 0.5
 _MAX_SCALE = 2.0
 _IGNORE_LABEL = 255
 
-_R_MEAN = 123.68
-_G_MEAN = 116.78
-_B_MEAN = 103.94
+_R_MEAN = 123.15
+_G_MEAN = 115.90
+_B_MEAN = 103.06
+_MEAN_RGB = [_R_MEAN, _G_MEAN, _B_MEAN]
 
 # colour map
 label_colours = [(0, 0, 0),  # 0=background
@@ -38,7 +39,8 @@ label_colours = [(0, 0, 0),  # 0=background
 
 
 
-dataset = '/Volumes/Samsung_T5/datasets/VOC2012'
+dataset = '/Volumes/Samsung_T5/datasets/VOCdevkit' # Select your path
+
 tfrecord_file = os.path.join(dataset, 'tfrecord')
 TRAIN_LIST = os.path.join(dataset, 'train.txt')
 VAL_LIST = os.path.join(dataset, 'val.txt')
@@ -60,11 +62,21 @@ def flip_random_left_right(image, anno):
 
 
 def random_pad_crop(image, anno):
-    #anno = anno.astype(np.int32)
-    #anno -= _IGNORE_LABEL
+
+    image = image.astype(np.float32)
+
     height, width = anno.shape
 
-    padded_image = np.pad(image, ((0, np.maximum(height, HEIGHT) - height), (0, np.maximum(width, WIDTH) - width), (0, 0)), mode='constant', constant_values=0)
+    #padded_image = np.pad(image, ((0, np.maximum(height, HEIGHT) - height), (0, np.maximum(width, WIDTH) - width), (0, 0)), mode='constant', constant_values=_MEAN_RGB)
+
+    padded_image_r = np.pad(image[:, :, 0], ((0, np.maximum(height, HEIGHT) - height), (0, np.maximum(width, WIDTH) - width)), mode='constant', constant_values=_R_MEAN)
+    padded_image_g = np.pad(image[:, :, 1], ((0, np.maximum(height, HEIGHT) - height), (0, np.maximum(width, WIDTH) - width)), mode='constant', constant_values=_G_MEAN)
+    padded_image_b = np.pad(image[:, :, 2], ((0, np.maximum(height, HEIGHT) - height), (0, np.maximum(width, WIDTH) - width)), mode='constant', constant_values=_B_MEAN)
+    padded_image = np.zeros(shape=[np.maximum(height, HEIGHT), np.maximum(width, WIDTH), 3], dtype=np.float32)
+    padded_image[:, :, 0] = padded_image_r
+    padded_image[:, :, 1] = padded_image_g
+    padded_image[:, :, 2] = padded_image_b
+
     padded_anno = np.pad(anno, ((0, np.maximum(height, HEIGHT) - height), (0, np.maximum(width, WIDTH) - width)), mode='constant', constant_values=_IGNORE_LABEL)
 
     y = random.randint(0, np.maximum(height, HEIGHT) - HEIGHT)
@@ -78,6 +90,7 @@ def random_pad_crop(image, anno):
 
 def random_resize(image, anno):
     height, width = anno.shape
+
     scale = random.uniform(_MIN_SCALE, _MAX_SCALE)
     scale_image = cv2.resize(image, (int(scale * width), int(scale * height)), interpolation=cv2.INTER_LINEAR)
     scale_anno = cv2.resize(anno, (int(scale * width), int(scale * height)), interpolation=cv2.INTER_NEAREST)
@@ -96,9 +109,9 @@ def mean_substraction(image):
 
 def augment(img, anno):
 
-
     scale_img, scale_anno = random_resize(img, anno)
 
+    img = img.astype(np.float32)
     cropped_image, cropped_anno = random_pad_crop(scale_img, scale_anno)
 
 
@@ -140,6 +153,7 @@ class Dataset(object):
         filenames = []
         for i in range(start, end):
             img = cv2.imread(self._image_data[i])
+            img = img[:,:,::-1]
             anno = cv2.imread(self._labels[i], cv2.IMREAD_GRAYSCALE)
 
             if is_training:

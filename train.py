@@ -15,27 +15,29 @@ import input_data
 import utils.utils as Utils
 
 
+# For dataset
 BATCH_SIZE = 6
 CROP_HEIGHT = input_data.HEIGHT
 CROP_WIDTH = input_data.WIDTH
-
-CLASSES = deeplab_model.CLASSES
 CHANNELS = 3
+CLASSES = deeplab_model.CLASSES
 _IGNORE_LABEL = input_data._IGNORE_LABEL
 
 PRETRAINED_MODEL_PATH = deeplab_model.PRETRAINED_MODEL_PATH
 
+# For training steps
 SAMPLES = 10582
-EPOCHES =50
+EPOCHES = 50
 MAX_STEPS = (SAMPLES) // BATCH_SIZE * EPOCHES
 
-
+# For training config
 initial_lr = 7e-3
 end_lr = 1e-5
-decay_steps = 30000
+decay_steps = 50000
 _POWER = 0.9
 _WEIGHT_DECAY = 5e-4
 
+# for saved path
 saved_ckpt_path = './checkpoint/'
 saved_summary_train_path = './summary/train/'
 saved_summary_test_path = './summary/test/'
