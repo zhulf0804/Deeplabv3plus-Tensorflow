@@ -9,6 +9,7 @@ from sklearn.utils import shuffle
 # import tensorflow as tf
 import cv2
 import random
+from random import choice
 import math
 
 HEIGHT = 512
@@ -19,6 +20,9 @@ CLASSES = 21
 
 _MIN_SCALE = 0.5
 _MAX_SCALE = 2.0
+
+SCALES = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
+
 _IGNORE_LABEL = 255
 
 _R_MEAN = 123.15
@@ -91,7 +95,7 @@ def random_pad_crop(image, anno):
 def random_resize(image, anno):
     height, width = anno.shape
 
-    scale = random.uniform(_MIN_SCALE, _MAX_SCALE)
+    scale = choice(SCALES)
     scale_image = cv2.resize(image, (int(scale * width), int(scale * height)), interpolation=cv2.INTER_LINEAR)
     scale_anno = cv2.resize(anno, (int(scale * width), int(scale * height)), interpolation=cv2.INTER_NEAREST)
 
@@ -169,7 +173,7 @@ class Dataset(object):
             return batch_img_raw, batch_img, batch_anno, filenames
         else:
             inference_image = mean_substraction(img)
-            print(os.path.basename(self._image_data[start]))
+            #print(os.path.basename(self._image_data[start]))
             return np.expand_dims(img, 0), np.expand_dims(inference_image, 0), np.expand_dims(anno, 0), os.path.basename(self._image_data[start])
 
 

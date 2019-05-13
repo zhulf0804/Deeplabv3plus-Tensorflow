@@ -7,9 +7,10 @@ import numpy as np
 import os
 from PIL import Image
 import cv2
+import datetime
 import matplotlib.pyplot as plt
+
 import deeplab_model
-import deeplab_model_0
 import input_data
 import utils.utils as Utils
 
@@ -45,8 +46,8 @@ with tf.name_scope("input"):
     x = tf.placeholder(tf.float32, [BATCH_SIZE, None, None, 3], name='x_input')
     y = tf.placeholder(tf.int32, [BATCH_SIZE, None, None], name='ground_truth')
 
-#logits = deeplab_model_0.deeplab_v3_plus(x, is_training=True, output_stride=16, pre_trained_model=PRETRAINED_MODEL_PATH)
-logits = deeplab_model.deeplabv3_plus_model_fn(x, is_training=False)
+logits = deeplab_model.deeplab_v3_plus(x, is_training=False, output_stride=16, pre_trained_model=PRETRAINED_MODEL_PATH)
+
 
 
 with tf.name_scope('prediction_and_miou'):
@@ -74,9 +75,12 @@ def get_val_predictions():
 
             pred = sess.run(prediction, feed_dict={x: b_image})
 
-            print(i, pred.shape, b_anno.shape)
+            basename = b_filename.split('.')[0]
 
-            # mIoU_val, IoU_val = Utils.cal_batch_mIoU(pred, b_anno, CLASSES)
+            if i % 100 == 0:
+                print(i, pred.shape)
+                print(basename)
+
             # save raw image, annotation, and prediction
             pred = pred.astype(np.uint8)
             b_anno = b_anno.astype(np.uint8)
@@ -91,9 +95,6 @@ def get_val_predictions():
             anno = Image.fromarray(b_anno_color)
             pred = Image.fromarray(pred_color)
 
-            basename = b_filename.split('.')[0]
-            # print(basename)
-
             if not os.path.exists(saved_prediction_val_gray):
                 os.mkdir(saved_prediction_val_gray)
             pred_gray.save(os.path.join(saved_prediction_val_gray, basename + '.png'))
@@ -104,7 +105,7 @@ def get_val_predictions():
             anno.save(os.path.join(saved_prediction_val_color, basename + '_anno.png'))
             pred.save(os.path.join(saved_prediction_val_color, basename + '_pred.png'))
 
-            # print("%s.png: prediction saved in %s, mIoU value is %.2f" % (basename, saved_prediction, mIoU_val))
+    print("predicting on val set finished")
 
 
 def get_test_predictions():
@@ -128,9 +129,13 @@ def get_test_predictions():
 
             pred = sess.run(prediction, feed_dict={x: b_image})
 
-            print(i, pred.shape)
+            basename = b_filename.split('.')[0]
 
-            # mIoU_val, IoU_val = Utils.cal_batch_mIoU(pred, b_anno, CLASSES)
+
+            if i % 100 == 0:
+                print(i, pred.shape)
+                print(basename)
+
             # save raw image, annotation, and prediction
             pred = pred.astype(np.uint8)
             pred_color = Utils.color_gray(pred[0, :, :])
@@ -142,8 +147,7 @@ def get_test_predictions():
             pred = Image.fromarray(pred_color)
             pred_gray = Image.fromarray(pred[0, :, :])
 
-            basename = b_filename.split('.')[0]
-            # print(basename)
+
 
             if not os.path.exists(saved_prediction_test_gray):
                 os.mkdir(saved_prediction_test_gray)
@@ -154,7 +158,12 @@ def get_test_predictions():
             img.save(os.path.join(saved_prediction_test_color, basename + '_raw.png'))
             pred.save(os.path.join(saved_prediction_val_color, basename + '_pred.png'))
 
+    print("predicting on test set finished")
+
 def get_val_mIoU():
+
+    print("Start to get mIoU on val set...")
+
     f = open(VAL_LIST)
     lines = f.readlines()
     annotation_files = [os.path.join(ANNOTATION_PATH, line.strip() + '.png') for line in lines]
@@ -188,6 +197,7 @@ def get_val_mIoU():
     print(IoU)
 
 if __name__ == '__main__':
+    get_val_predictions()
     get_val_mIoU()
 
 

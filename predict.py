@@ -10,7 +10,6 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import argparse
 import deeplab_model
-import deeplab_model_0
 import input_data
 import utils.utils as Utils
 
@@ -43,8 +42,8 @@ with tf.name_scope("input"):
     x = tf.placeholder(tf.float32, [BATCH_SIZE, None, None, 3], name='x_input')
     y = tf.placeholder(tf.int32, [BATCH_SIZE, None, None], name='ground_truth')
 
-#logits = deeplab_model_0.deeplab_v3_plus(x, is_training=True, output_stride=16, pre_trained_model=PRETRAINED_MODEL_PATH)
-logits = deeplab_model.deeplabv3_plus_model_fn(x, is_training=False)
+logits = deeplab_model.deeplab_v3_plus(x, is_training=True, output_stride=16, pre_trained_model=PRETRAINED_MODEL_PATH)
+#logits = deeplab_model.deeplabv3_plus_model_fn(x, is_training=False)
 
 
 with tf.name_scope('prediction_and_miou'):

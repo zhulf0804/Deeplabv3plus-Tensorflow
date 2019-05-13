@@ -26,7 +26,7 @@ def cal_batch_mIoU(pred, gt, classes_num):
     pred_flatten = np.reshape(pred, -1)
     gt_flatten = np.reshape(gt, -1)
 
-    print(pred_flatten.shape, gt_flatten.shape)
+    #print(pred_flatten.shape, gt_flatten.shape)
 
     for i in range(0, classes_num):
         a = [pred_flatten == i, gt_flatten != input_data._IGNORE_LABEL]

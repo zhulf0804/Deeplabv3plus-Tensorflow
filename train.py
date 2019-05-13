@@ -27,15 +27,15 @@ PRETRAINED_MODEL_PATH = deeplab_model.PRETRAINED_MODEL_PATH
 
 # For training steps
 SAMPLES = 10582
-EPOCHES = 50
+EPOCHES = 60
 MAX_STEPS = (SAMPLES) // BATCH_SIZE * EPOCHES
 
 # For training config
 initial_lr = 7e-3
-end_lr = 1e-5
-decay_steps = 50000
+end_lr = 1e-6
+decay_steps = 60000
 _POWER = 0.9
-_WEIGHT_DECAY = 5e-4
+_WEIGHT_DECAY = 1e-4
 
 # for saved path
 saved_ckpt_path = './checkpoint/'
@@ -71,8 +71,8 @@ with tf.name_scope('input'):
     y = tf.placeholder(dtype=tf.int32, shape=[BATCH_SIZE, CROP_HEIGHT, CROP_WIDTH], name='ground_truth')
 
 
-#logits = deeplab_model.deeplab_v3_plus(x, is_training=True, output_stride=16, pre_trained_model=PRETRAINED_MODEL_PATH)
-logits = deeplab_model.deeplabv3_plus_model_fn(x)
+logits = deeplab_model.deeplab_v3_plus(x, is_training=True, output_stride=16, pre_trained_model=PRETRAINED_MODEL_PATH)
+#logits = deeplab_model.deeplabv3_plus_model_fn(x)
 
 with tf.name_scope('regularization'):
 
