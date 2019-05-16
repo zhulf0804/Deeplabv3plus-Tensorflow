@@ -14,9 +14,13 @@ import deeplab_model
 import input_data
 import utils.utils as Utils
 
+flags = tf.app.flags
+FLAGS = flags.FLAGS
+
 
 # For dataset
-BATCH_SIZE = 6
+BATCH_SIZE_OS_16 = 8
+BATCH_SIZE_OS_8 = 2
 CROP_HEIGHT = input_data.HEIGHT
 CROP_WIDTH = input_data.WIDTH
 CHANNELS = 3
@@ -26,16 +30,49 @@ _IGNORE_LABEL = input_data._IGNORE_LABEL
 PRETRAINED_MODEL_PATH = deeplab_model.PRETRAINED_MODEL_PATH
 
 # For training steps
-SAMPLES = 10582
-EPOCHES = 60
-MAX_STEPS = (SAMPLES) // BATCH_SIZE * EPOCHES
+SAMPLES_AUG = 10582
+SAMEPLES_train = 1464
+EPOCHES = 42
+MAX_STEPS_FAST = (SAMPLES_AUG) // BATCH_SIZE_OS_16 * EPOCHES
+MAX_STEPS_SLOW = (SAMEPLES_train) // BATCH_SIZE_OS_8 * EPOCHES
+
+SAVE_CHECKPOINT_STEPS = 5000
+SAVE_SUMMARY_STEPS = 1000
+PRINT_STEPS = 200
 
 # For training config
-initial_lr = 7e-3
-end_lr = 1e-6
-decay_steps = 60000
 _POWER = 0.9
 _WEIGHT_DECAY = 1e-4
+
+initial_lr_fast = 7e-3
+end_lr_fast = 1e-5
+decay_steps_fast = 50000
+
+
+initial_lr_slow = 1e-5
+end_lr_slow = 1e-6
+decay_steps_slow = 30000
+
+
+flags.DEFINE_integer('output_stride', 16, 'output stride used in the resnet model')
+
+if FLAGS.output_stride == 16:
+    MAX_STEPS = MAX_STEPS_FAST
+    initial_lr = initial_lr_fast
+    end_lr = end_lr_fast
+    decay_steps = decay_steps_fast
+    BATCH_SIZE = BATCH_SIZE_OS_16
+    train_data = input_data.read_train_data()
+    val_data = input_data.read_val_data()
+elif FLAGS.output_stride == 8:
+    MAX_STEPS = MAX_STEPS_SLOW
+    initial_lr = initial_lr_slow
+    end_lr = end_lr_slow
+    decay_steps = decay_steps_slow
+    BATCH_SIZE = BATCH_SIZE_OS_8
+    train_data = input_data.read_train_raw_data()
+    val_data = input_data.read_val_data()
+
 
 # for saved path
 saved_ckpt_path = './checkpoint/'
@@ -57,8 +94,7 @@ def cal_loss(logits, y, loss_weight=1.0):
     '''
 
     y = tf.reshape(y, shape=[-1])
-    not_ignore_mask = tf.to_float(tf.not_equal(y,
-                                               _IGNORE_LABEL)) * loss_weight
+    not_ignore_mask = tf.to_float(tf.not_equal(y, _IGNORE_LABEL)) * loss_weight
     one_hot_labels = tf.one_hot(
         y, CLASSES, on_value=1.0, off_value=0.0)
     logits = tf.reshape(logits, shape=[-1, CLASSES])
@@ -67,11 +103,12 @@ def cal_loss(logits, y, loss_weight=1.0):
     return tf.reduce_mean(loss)
 
 with tf.name_scope('input'):
-    x = tf.placeholder(dtype=tf.float32, shape=[BATCH_SIZE, CROP_HEIGHT, CROP_WIDTH, CHANNELS], name='x_input')
-    y = tf.placeholder(dtype=tf.int32, shape=[BATCH_SIZE, CROP_HEIGHT, CROP_WIDTH], name='ground_truth')
+    x = tf.placeholder(dtype=tf.float32, shape=[None, CROP_HEIGHT, CROP_WIDTH, CHANNELS], name='x_input')
+    y = tf.placeholder(dtype=tf.int32, shape=[None, CROP_HEIGHT, CROP_WIDTH], name='ground_truth')
 
 
-logits = deeplab_model.deeplab_v3_plus(x, is_training=True, output_stride=16, pre_trained_model=PRETRAINED_MODEL_PATH)
+logits = deeplab_model.deeplab_v3_plus(x, is_training=True, output_stride=FLAGS.output_stride, pre_trained_model=PRETRAINED_MODEL_PATH)
+
 #logits = deeplab_model.deeplabv3_plus_model_fn(x)
 
 with tf.name_scope('regularization'):
@@ -90,6 +127,7 @@ with tf.name_scope('loss'):
     loss_all = loss + l2_loss
     tf.summary.scalar('loss_all', loss_all)
 
+
 with tf.name_scope('learning_rate'):
     global_step = tf.Variable(0, trainable=False)
     lr = tf.train.polynomial_decay(
@@ -103,14 +141,18 @@ with tf.name_scope('learning_rate'):
     )
     tf.summary.scalar('learning_rate', lr)
 
+
+
 with tf.name_scope("opt"):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9).minimize(loss_all, var_list=train_var_list, global_step=global_step)
 
+
 with tf.name_scope("mIoU"):
-    softmax = tf.nn.softmax(logits, axis=-1)
+
     predictions = tf.argmax(logits, axis=-1, name='predictions')
+
 
     train_mIoU = tf.Variable(0, dtype=tf.float32, trainable=False)
     tf.summary.scalar('train_mIoU', train_mIoU)
@@ -119,8 +161,6 @@ with tf.name_scope("mIoU"):
 
 merged = tf.summary.merge_all()
 
-train_data = input_data.read_train_data()
-val_data = input_data.read_val_data()
 
 with tf.Session() as sess:
 
@@ -134,6 +174,9 @@ with tf.Session() as sess:
     ckpt = tf.train.get_checkpoint_state(saved_ckpt_path)
     if ckpt and ckpt.model_checkpoint_path:
         saver.restore(sess, ckpt.model_checkpoint_path)
+
+        sess.run(tf.assign(global_step, 0))
+
         print("Model restored...")
 
     # saver.restore(sess, './checkpoint/deeplabv3plus.model-30000')
@@ -144,6 +187,7 @@ with tf.Session() as sess:
     for i in range(0, MAX_STEPS + 1):
 
 
+
         image_batch_0, image_batch, anno_batch, filename = train_data.next_batch(BATCH_SIZE, is_training=True)
         image_batch_val_0, image_batch_val, anno_batch_val, filename_val = val_data.next_batch(BATCH_SIZE, is_training=True)
 
@@ -151,18 +195,18 @@ with tf.Session() as sess:
         _ = sess.run(optimizer, feed_dict={x: image_batch, y: anno_batch})
 
 
-        if i % 1000 == 0:
+        if i % SAVE_SUMMARY_STEPS == 0:
             train_summary = sess.run(merged, feed_dict={x: image_batch, y: anno_batch})
             train_summary_writer.add_summary(train_summary, i)
             test_summary = sess.run(merged, feed_dict={x: image_batch_val, y: anno_batch_val})
             test_summary_writer.add_summary(test_summary, i)
 
 
-        if i % 200 == 0:
+        if i % PRINT_STEPS == 0:
             train_loss_val_all = sess.run(loss_all, feed_dict={x: image_batch, y: anno_batch})
             print(datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S"), " | Step: %d, | Train loss all: %f" % (i, train_loss_val_all))
 
-        if i % 1000 == 0:
+        if i % SAVE_SUMMARY_STEPS == 0:
             learning_rate = sess.run(lr)
             pred_train, train_loss_val_all, train_loss_val = sess.run([predictions, loss_all, loss],
                                                                       feed_dict={x: image_batch, y: anno_batch})
@@ -183,7 +227,7 @@ with tf.Session() as sess:
             print('------------------------------')
             #prediction = tf.argmax(logits, axis=-1, name='predictions')
 
-        if i % 5000 == 0:
+        if i % SAVE_CHECKPOINT_STEPS == 0:
             if not os.path.exists('images'):
                 os.mkdir('images')
             for j in range(BATCH_SIZE):
@@ -195,5 +239,8 @@ with tf.Session() as sess:
                 cv2.imwrite('images/%d_%s_test_pred.png' %(i, filename_val[j].split('.')[0]), Utils.color_gray(pred_test[j]))
 
 
-        if i % 5000 == 0:
+        if i % SAVE_CHECKPOINT_STEPS == 0:
             saver.save(sess, os.path.join(saved_ckpt_path, 'deeplabv3plus.model'), global_step=i)
+
+if __name__ == '__main__':
+    tf.app.run()

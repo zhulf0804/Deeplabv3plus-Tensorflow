@@ -6,7 +6,7 @@ A Tensorflow implementation of [Deeplabv3plus](http://openaccess.thecvf.com/cont
 
 + training strategy
     
-    We use batch_size = 6, and don't train the BN layer.
+    We use small batch_size = 8, and don't train the BN layer.
     
 + atrous convolution
     
@@ -22,9 +22,11 @@ The VOCdevkit directory should be as follows:
 
 ```
 |--VOCdevkit
-        |--train.txt  (10582 lines)
-        |--val.txt    (1449 lines)
-        |--test.txt   (1456 lines)
+        |--train.txt         (10582 lines)
+        |--val.txt           (1449 lines)
+        |--test.txt          (1456 lines)
+        |--train_raw.txt     (1464 lines)
+        |--trainval_raw.txt  (2913 lines)
         |--VOC2012
             |--JPEGImages            (33260 images)
             |--SegmentationClass
@@ -84,9 +86,33 @@ The resnet_v2_101_2017_04_14 directory should be as follows:
 
 ## Results
 
-The mIoU on the val set is 71.09 %.
+#### on val set
 
-'sheep': 0.78, 'horse': 0.79, 'tv/monitor': 0.65, 'bicycle': 0.39, 'aeroplane': 0.84, 'cow': 0.82, 'dining table': 0.54, 'bus': 0.89, 'potted plant': 0.54, 'background': 0.92, 'dog': 0.8, 'cat': 0.85, 'person': 0.79, 'train': 0.82, 'bottle': 0.68, 'car': 0.82, 'chair': 0.31, 'sofa': 0.45, 'bird': 0.81, 'boat': 0.63, 'motorbike': 0.78}
+| Repo(%) | Paper(%) |
+| :---: | :----: |
+| **75.84** | 79.35 |
+
+| sheep | horse | tv/monitor | bicycle | aeroplane | cow | dining table | bus | potted plant | background | dog | cat | person | train | bottle | car | chair | sofa | 0.54 | bird | boat | motorbike |
+| :---: | :----: | :---: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
+| 0.85 | 0.84 | 0.67 | 0.41 | 0.88 | 0.86 | 0.56 | 0.92 | 0.59 | 0.94 | 0.86 | 0.9 | 0.84 | 0.88 | 0.78 | 0.82 | 0.41 | 0.88 | 0.66 | 0.83 |
+
+#### predicted images
+
+![](./test_results/test_1.png)
+
+![](./test_results/test_2.png)
+
+![](./test_results/test_3.png)
+
+**Note:** **left** image is raw image, **right** image is the predicted image.
+
+#### learning rate
+
+![](./test_results/lr.png)
+
+#### loss
+
+![](./test_results/loss.png)
 
 
 ## Reference

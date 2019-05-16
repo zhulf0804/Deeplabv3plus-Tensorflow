@@ -14,6 +14,8 @@ import deeplab_model
 import input_data
 import utils.utils as Utils
 
+SCALES = input_data.SCALES
+FLIPPED = True
 
 PRETRAINED_MODEL_PATH = deeplab_model.PRETRAINED_MODEL_PATH
 
@@ -46,7 +48,7 @@ with tf.name_scope("input"):
     x = tf.placeholder(tf.float32, [BATCH_SIZE, None, None, 3], name='x_input')
     y = tf.placeholder(tf.int32, [BATCH_SIZE, None, None], name='ground_truth')
 
-logits = deeplab_model.deeplab_v3_plus(x, is_training=False, output_stride=16, pre_trained_model=PRETRAINED_MODEL_PATH)
+logits = deeplab_model.deeplab_v3_plus(x, is_training=False, output_stride=8, pre_trained_model=PRETRAINED_MODEL_PATH)
 
 
 
@@ -107,7 +109,6 @@ def get_val_predictions():
 
     print("predicting on val set finished")
 
-
 def get_test_predictions():
 
     with tf.Session() as sess:
@@ -160,6 +161,84 @@ def get_test_predictions():
 
     print("predicting on test set finished")
 
+def get_ms_flip_val_predictions():
+
+    with tf.Session() as sess:
+        sess.run(tf.local_variables_initializer())
+        sess.run(tf.global_variables_initializer())
+        saver = tf.train.Saver()
+
+        # saver.restore(sess, './checkpoint/deeplabv3plus.model-5000')
+
+        ckpt = tf.train.get_checkpoint_state(saved_ckpt_path)
+        if ckpt and ckpt.model_checkpoint_path:
+            saver.restore(sess, ckpt.model_checkpoint_path)
+            print("Model restored...")
+
+        print("multi predicting on val set...")
+
+        for i in range(val_num):
+            b_image_0, b_image, b_anno, b_filename = val_data.next_batch(BATCH_SIZE, is_training=False, Shuffle=False)
+
+            pred = []
+
+            for scale in SCALES:
+                image = np.squeeze(b_image)
+                height, width, _ = image.shape
+                scale_image = cv2.resize(image, (int(scale * width), int(scale * height)), interpolation=cv2.INTER_LINEAR)
+
+                mutli_prediction = tf.image.resize_bilinear(logits, [height, width], align_corners=True)
+                reversed_multi_prediction = tf.image.flip_left_right(mutli_prediction)
+                multi_pred = sess.run(mutli_prediction, feed_dict={x: np.expand_dims(scale_image, 0)})
+
+                pred.append(np.squeeze(multi_pred))
+
+                if FLIPPED:
+                    flipped_image = cv2.flip(scale_image, 1)
+                    mutli_prediction = tf.image.resize_bilinear(logits, [height, width], align_corners=True)
+                    multi_pred = sess.run(reversed_multi_prediction, feed_dict={x: np.expand_dims(flipped_image, 0)})
+                    pred.append(np.squeeze(multi_pred))
+
+            pred = np.array(pred)
+
+            pred = np.squeeze(np.mean(pred, 0))
+
+            pred = np.squeeze(np.argmax(pred, -1))
+
+            basename = b_filename.split('.')[0]
+
+            if i % 100 == 0:
+                print(i, pred.shape)
+                print(basename)
+
+            # save raw image, annotation, and prediction
+            pred = pred.astype(np.uint8)
+            b_anno = b_anno.astype(np.uint8)
+
+            pred_color = Utils.color_gray(pred[:, :])
+            b_anno_color = Utils.color_gray(b_anno[0, :, :])
+
+            b_image_0 = b_image_0.astype(np.uint8)
+
+            pred_gray = Image.fromarray(pred)
+            img = Image.fromarray(b_image_0[0])
+            anno = Image.fromarray(b_anno_color)
+            pred = Image.fromarray(pred_color)
+
+            if not os.path.exists(saved_prediction_val_gray):
+                os.mkdir(saved_prediction_val_gray)
+            pred_gray.save(os.path.join(saved_prediction_val_gray, basename + '.png'))
+
+            if not os.path.exists(saved_prediction_val_color):
+                os.mkdir(saved_prediction_val_color)
+            img.save(os.path.join(saved_prediction_val_color, basename + '_raw.png'))
+            anno.save(os.path.join(saved_prediction_val_color, basename + '_anno.png'))
+            pred.save(os.path.join(saved_prediction_val_color, basename + '_pred.png'))
+
+        print("multi predicting on val set finished")
+
+
+
 def get_val_mIoU():
 
     print("Start to get mIoU on val set...")
@@ -198,7 +277,10 @@ def get_val_mIoU():
 
 if __name__ == '__main__':
     get_val_predictions()
+    #get_ms_flip_val_predictions()
     get_val_mIoU()
+
+    get_test_predictions()
 
 
 

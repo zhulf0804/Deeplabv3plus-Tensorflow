@@ -47,6 +47,7 @@ dataset = '/Volumes/Samsung_T5/datasets/VOCdevkit' # Select your path
 
 tfrecord_file = os.path.join(dataset, 'tfrecord')
 TRAIN_LIST = os.path.join(dataset, 'train.txt')
+TRAIN_RAW_LIST = os.path.join(dataset, 'train_raw.txt')
 VAL_LIST = os.path.join(dataset, 'val.txt')
 TEST_LIST = os.path.join(dataset, 'test.txt')
 IMAGE_PATH = os.path.join(dataset, 'VOC2012/JPEGImages')
@@ -191,6 +192,20 @@ def read_train_data(Shuffle=True):
 
     return train_data
 
+def read_train_raw_data(Shuffle=True):
+
+    f = open(TRAIN_RAW_LIST)
+    lines = f.readlines()
+    img_filenames = [os.path.join(IMAGE_PATH, line.strip() + '.jpg') for line in lines]
+    anno_filenames = [os.path.join(ANNOTATION_PATH, line.strip() + '.png') for line in lines]
+
+    if Shuffle:
+        img_filenames, anno_filenames = shuffle(img_filenames, anno_filenames)
+
+    train_raw_data = Dataset(img_filenames, anno_filenames)
+
+    return train_raw_data
+
 
 def read_val_data(Shuffle=True):
     f = open(VAL_LIST)
@@ -224,9 +239,6 @@ if __name__ == '__main__':
     test_data = read_val_data()
     train_img_raw, train_img_data, train_lables, train_filenames = train_data.next_batch(4, True)
     test_img_raw, test_img_data, test_labels, test_filenames = test_data.next_batch(1)
-
-    #print(train_img_data)
-    #print(test_img_data)
 
     for i in range(4):
         cv2.imwrite('test/trainraw_%d.png' % i, train_img_raw[i])

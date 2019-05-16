@@ -120,13 +120,14 @@ def deeplab_v3_plus(inputs, is_training, output_stride, pre_trained_model):
             net = tf.concat([net, low_level_features], axis=-1, name='concat')
             weight_3x3_upsamle_1 = weight_variable([3, 3, net.get_shape().as_list()[-1], 256], name='weight_3x3_upsamle_1')
             weight_3x3_upsamle_2 = weight_variable([3, 3, 256, 256], name='weight_3x3_upsamle_2')
-            weight_3x3_upsamle_3 = weight_variable([3, 3, 256, CLASSES], name='weight_3x3_upsamle_3')
+            weight_3x3_upsamle_3 = weight_variable([1, 1, 256, CLASSES], name='weight_1x1_upsamle_3')
+            bias = bias_variable([CLASSES], name='softmax_bias')
 
             net = tf.nn.conv2d(net, weight_3x3_upsamle_1, [1, 1, 1, 1], padding='SAME', name='conv_3x3_upsamle_1')
             net = tf.nn.relu(batch_norm(net, is_training), name='conv_3x3_relu_1')
             net = tf.nn.conv2d(net, weight_3x3_upsamle_2, [1, 1, 1, 1], padding='SAME', name='conv_3x3_upsamle_2')
             net = tf.nn.relu(batch_norm(net, is_training), name='conv_3x3_relu_2')
-            net = tf.nn.conv2d(net, weight_3x3_upsamle_3, [1, 1, 1, 1], padding='SAME', name='conv_3x3_upsamle_3')
+            net = tf.nn.conv2d(net, weight_3x3_upsamle_3, [1, 1, 1, 1], padding='SAME', name='conv_1x1_upsamle_3') + bias
 
             logits = tf.image.resize_bilinear(net, tf.shape(inputs)[1:3], name='upsample_2')
 
@@ -136,9 +137,9 @@ def deeplab_v3_plus(inputs, is_training, output_stride, pre_trained_model):
 
 if __name__ == '__main__':
 
-    inputs = tf.placeholder(dtype=tf.float32, shape=[4, None, None, 3], name='x_input')
-    #inputs = tf.constant(1.0, shape=[8, None, None, 3])
-    b = deeplab_v3_plus(inputs, is_training=True, output_stride=16, pre_trained_model=PRETRAINED_MODEL_PATH)
+    #inputs = tf.placeholder(dtype=tf.float32, shape=[4, None, None, 3], name='x_input')
+    inputs = tf.constant(1.0, shape=[8, 512, 512, 3])
+    b = deeplab_v3_plus(inputs, is_training=False, output_stride=8, pre_trained_model=PRETRAINED_MODEL_PATH)
 
     print(len(tf.global_variables()), tf.global_variables())
     print(len(tf.trainable_variables()) ,tf.trainable_variables())

@@ -42,7 +42,7 @@ with tf.name_scope("input"):
     x = tf.placeholder(tf.float32, [BATCH_SIZE, None, None, 3], name='x_input')
     y = tf.placeholder(tf.int32, [BATCH_SIZE, None, None], name='ground_truth')
 
-logits = deeplab_model.deeplab_v3_plus(x, is_training=True, output_stride=16, pre_trained_model=PRETRAINED_MODEL_PATH)
+logits = deeplab_model.deeplab_v3_plus(x, is_training=True, output_stride=8, pre_trained_model=PRETRAINED_MODEL_PATH)
 #logits = deeplab_model.deeplabv3_plus_model_fn(x, is_training=False)
 
 
