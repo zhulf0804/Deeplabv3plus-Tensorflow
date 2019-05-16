@@ -120,7 +120,7 @@ def deeplab_v3_plus(inputs, is_training, output_stride, pre_trained_model):
             net = tf.concat([net, low_level_features], axis=-1, name='concat')
             weight_3x3_upsamle_1 = weight_variable([3, 3, net.get_shape().as_list()[-1], 256], name='weight_3x3_upsamle_1')
             weight_3x3_upsamle_2 = weight_variable([3, 3, 256, 256], name='weight_3x3_upsamle_2')
-            weight_3x3_upsamle_3 = weight_variable([1, 1, 256, CLASSES], name='weight_1x1_upsamle_3')
+            weight_3x3_upsamle_3 = weight_variable([1, 1, 256, CLASSES], name='weight_3x3_upsamle_3')  # => weight_1x1_upsamle_3
             bias = bias_variable([CLASSES], name='softmax_bias')
 
             net = tf.nn.conv2d(net, weight_3x3_upsamle_1, [1, 1, 1, 1], padding='SAME', name='conv_3x3_upsamle_1')

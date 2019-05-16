@@ -62,6 +62,8 @@ The resnet_v2_101_2017_04_14 directory should be as follows:
 
 ## Inference
 
++ download checkpoint from [here](https://pan.baidu.com/s/1ELFnPgS3TRi3egXHr6LSBA)
+
 + randomly select images
 
     > python predict.py
@@ -72,6 +74,8 @@ The resnet_v2_101_2017_04_14 directory should be as follows:
     
 
 ## Evaluation
+
++ download checkpoint from [here](https://pan.baidu.com/s/1ELFnPgS3TRi3egXHr6LSBA)
 
  > python evaluate.py
 
@@ -92,9 +96,9 @@ The resnet_v2_101_2017_04_14 directory should be as follows:
 | :---: | :----: |
 | **75.84** | 79.35 |
 
-| sheep | horse | tv/monitor | bicycle | aeroplane | cow | dining table | bus | potted plant | background | dog | cat | person | train | bottle | car | chair | sofa | 0.54 | bird | boat | motorbike |
+| sheep | horse | tv/monitor | bicycle | aeroplane | cow | dining table | bus | potted plant | background | dog | cat | person | train | bottle | car | chair | sofa | bird | boat | motorbike |
 | :---: | :----: | :---: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
-| 0.85 | 0.84 | 0.67 | 0.41 | 0.88 | 0.86 | 0.56 | 0.92 | 0.59 | 0.94 | 0.86 | 0.9 | 0.84 | 0.88 | 0.78 | 0.82 | 0.41 | 0.88 | 0.66 | 0.83 |
+| 0.85 | 0.84 | 0.67 | 0.41 | 0.88 | 0.86 | 0.56 | 0.92 | 0.59 | 0.94 | 0.86 | 0.9 | 0.84 | 0.88 | 0.78 | 0.82 | 0.41 | 0.54 | 0.88 | 0.66 | 0.83 |
 
 #### predicted images
 

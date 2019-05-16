@@ -63,12 +63,12 @@ def get_val_predictions():
         sess.run(tf.global_variables_initializer())
         saver = tf.train.Saver()
 
-        # saver.restore(sess, './checkpoint/deeplabv3plus.model-5000')
+        saver.restore(sess, './checkpoint/deeplabv3plus.model-55000')
 
-        ckpt = tf.train.get_checkpoint_state(saved_ckpt_path)
-        if ckpt and ckpt.model_checkpoint_path:
-            saver.restore(sess, ckpt.model_checkpoint_path)
-            print("Model restored...")
+        #ckpt = tf.train.get_checkpoint_state(saved_ckpt_path)
+        #if ckpt and ckpt.model_checkpoint_path:
+        #    saver.restore(sess, ckpt.model_checkpoint_path)
+        #    print("Model restored...")
 
         print("predicting on val set...")
 
@@ -116,12 +116,12 @@ def get_test_predictions():
         sess.run(tf.global_variables_initializer())
         saver = tf.train.Saver()
 
-        # saver.restore(sess, './checkpoint/deeplabv3plus.model-5000')
+        saver.restore(sess, './checkpoint/deeplabv3plus.model-55000')
 
-        ckpt = tf.train.get_checkpoint_state(saved_ckpt_path)
-        if ckpt and ckpt.model_checkpoint_path:
-            saver.restore(sess, ckpt.model_checkpoint_path)
-            print("Model restored...")
+        #ckpt = tf.train.get_checkpoint_state(saved_ckpt_path)
+        #if ckpt and ckpt.model_checkpoint_path:
+        #    saver.restore(sess, ckpt.model_checkpoint_path)
+        #    print("Model restored...")
 
         print("predicting on test set...")
 
