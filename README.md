@@ -70,7 +70,8 @@ The resnet_v2_101_2017_04_14 directory should be as follows:
    
 + select one image
     
-    > python predict.py --prediction_on_which val --filename 2009_003804
+    > python predict.py --prediction_on_which val --filename 2007_002400
+  
     
 
 ## Evaluation
@@ -97,7 +98,7 @@ The resnet_v2_101_2017_04_14 directory should be as follows:
 | **75.84** | 79.35 |
 
 | sheep | horse | tv/monitor | bicycle | aeroplane | cow | dining table | bus | potted plant | background | dog | cat | person | train | bottle | car | chair | sofa | bird | boat | motorbike |
-| :---: | :----: | :---: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
+| :---: | :----: | :---: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
 | 0.85 | 0.84 | 0.67 | 0.41 | 0.88 | 0.86 | 0.56 | 0.92 | 0.59 | 0.94 | 0.86 | 0.9 | 0.84 | 0.88 | 0.78 | 0.82 | 0.41 | 0.54 | 0.88 | 0.66 | 0.83 |
 
 #### predicted images

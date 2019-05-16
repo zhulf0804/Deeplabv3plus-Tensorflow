@@ -42,7 +42,7 @@ with tf.name_scope("input"):
     x = tf.placeholder(tf.float32, [BATCH_SIZE, None, None, 3], name='x_input')
     y = tf.placeholder(tf.int32, [BATCH_SIZE, None, None], name='ground_truth')
 
-logits = deeplab_model.deeplab_v3_plus(x, is_training=True, output_stride=8, pre_trained_model=PRETRAINED_MODEL_PATH)
+logits = deeplab_model.deeplab_v3_plus(x, is_training=False, output_stride=8, pre_trained_model=PRETRAINED_MODEL_PATH)
 #logits = deeplab_model.deeplabv3_plus_model_fn(x, is_training=False)
 
 
@@ -82,8 +82,9 @@ if __name__ == '__main__':
                 raise Exception('%s not exist' %filename_path)
 
             b_image_0 = cv2.imread(filename_path)
+            b_image_0 = b_image_0[:,:,::-1]
             b_image = np.expand_dims(input_data.mean_substraction(b_image_0), 0)
-            print(b_image)
+            b_image_0 = np.expand_dims(b_image_0, 0)
             b_anno = np.expand_dims(cv2.imread(os.path.join(ANNOTATION_PATH, filename + '.png'), cv2.IMREAD_GRAYSCALE), 0)
             b_filename = filename
 
@@ -133,5 +134,5 @@ if __name__ == '__main__':
 ## Exec
 ## python predict.py
 ## or
-## python predict.py --prediction_on_which val --filename 2009_003804
+## python predict.py --prediction_on_which val --filename 2007_002400
 
