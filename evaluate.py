@@ -157,7 +157,7 @@ def get_test_predictions():
             if not os.path.exists(saved_prediction_test_color):
                 os.mkdir(saved_prediction_test_color)
             img.save(os.path.join(saved_prediction_test_color, basename + '_raw.png'))
-            pred.save(os.path.join(saved_prediction_val_color, basename + '_pred.png'))
+            pred.save(os.path.join(saved_prediction_test_color, basename + '_pred.png'))
 
     print("predicting on test set finished")
 
